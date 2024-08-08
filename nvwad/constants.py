@@ -3,7 +3,7 @@
 
 class Constants:
     # File reading and writing
-    CHUNK_SIZE = 2**20  # 1MB
+    CHUNK_SIZE = 2**20  # 1MiB
 
     # HED file
     FILE_ENTRY_ALIGN = 4
