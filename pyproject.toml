@@ -3,7 +3,7 @@ name = "nvwad"
 description = "A Python CLI tool to pack and unpack Neversoft PS2 WAD files."
 authors = [{ name = "santiago046" }]
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = { file = "LICENSE" }
 dependencies = ["click>=8.0.0"]
 dynamic = ["version"]
