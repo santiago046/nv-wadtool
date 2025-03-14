@@ -33,10 +33,11 @@ Usage: nv-wadtool pack [OPTIONS] SRC_DIR
   SRC_DIR is the directory containing files to be packed.
 
 Options:
-  -f, --force        Overwrite existing output files.
-  -o, --output PATH  Specify the output WAD file. If not provided, defaults to
-                     './' + SRC_DIR base name with '.wad' extension.
-  -h, --help         Show this message and exit.
+  -f, --force           Overwrite existing output files.
+  -s, --sector-offsets  Use sector-based offsets when writing header file.
+  -o, --output PATH     Specify the output WAD file. If not provided, defaults
+                        to './' + SRC_DIR base name with '.wad' extension.
+  -h, --help            Show this message and exit.
 ```
 
 ### Unpack Command

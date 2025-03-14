@@ -22,6 +22,12 @@ def nv_wadtool():
 @nv_wadtool.command(name="pack")
 @force_overwt
 @click.option(
+    "-s",
+    "--sector-offsets",
+    help="Use sector-based offsets when writing header file.",
+    is_flag=True,
+)
+@click.option(
     "-o",
     "--output",
     "out_wad",
@@ -40,7 +46,7 @@ def nv_wadtool():
         path_type=pathlib.Path,
     ),
 )
-def pack_wad(force, out_wad, src_dir):
+def pack_wad(force, sector_offsets, out_wad, src_dir):
     """Pack a directory into a Neversoft PS2 WAD file.
 
     SRC_DIR is the directory containing files to be packed.
@@ -57,7 +63,7 @@ def pack_wad(force, out_wad, src_dir):
         )
 
     with open(hed_path, "wb") as hed_file, open(wad_path, "wb") as wad_file:
-        nvwad.pack(src_dir, hed_file, wad_file)
+        nvwad.pack(src_dir, hed_file, wad_file, sector_offsets)
 
 
 # --- Unpack command --- #

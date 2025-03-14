@@ -1,13 +1,8 @@
-"""Constants used by pack and unpack funtions"""
+"""Constants used by pack and unpack functions"""
 
+CHUNK_SIZE = 2**20  # 1MiB
 
-class Constants:
-    # File reading and writing
-    CHUNK_SIZE = 2**20  # 1MiB
+HED_ALIGNMENT = 4
+HED_EOF = b"\xff\xff\xff\xff"
 
-    # HED file
-    FILE_ENTRY_ALIGN = 4
-    HED_END_MARKER = b"\xff" * 4
-
-    # WAD file
-    WAD_DATA_ALIGN = 2048
+SECTOR_SIZE = 2048

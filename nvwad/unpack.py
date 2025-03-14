@@ -1,69 +1,84 @@
-import pathlib
 import struct
-from collections.abc import Iterator
+from collections.abc import Generator
+from os import SEEK_CUR
+from pathlib import Path, PureWindowsPath
 from typing import BinaryIO
 
-from .constants import Constants
-from .utils import calc_padding, FileInfo
+from .constants import *
+from .utils import calc_padding, HedEntry
 
 
-__all__ = ["unpack"]
-
-
-def parse_hed(hed_fp: BinaryIO) -> Iterator[FileInfo]:
+def parse_hed(hed_fp: BinaryIO) -> tuple[HedEntry, ...]:
     """
-    Parses a Neversoft PS2 HED (header) file and yields file entries.
-
-    This function reads the HED file, extracts file entries including data
-    offset, size, and path, and yields them as FileInfo named tuples.
+    Parses a Neversoft PS2 HED (header) file and yields entries.
 
     Args:
-        hed_fp (BinaryIO): The HED (header) file pointer opened in r+b mode.
+        hed_fp: The HED (header) file pointer opened in r+b mode.
 
-    Yields:
-        FileInfo: A named tuple containing the data offset, data size, and
-          file path.
+    Returns:
+        A tuple of named tuples containing offset, size, and path.
     """
-    while (chunk := hed_fp.read(8)) != Constants.HED_END_MARKER:
-        data_offset, data_size = struct.unpack("<II", chunk)
-        file_path = b""
-        while (b := hed_fp.read(1)) != b"\x00":
-            file_path += b
+    entries = []
+    path_buf = bytearray()
 
-        entry_length = len(chunk + file_path + b"\x00")
-        padding_length = calc_padding(entry_length, Constants.FILE_ENTRY_ALIGN)
-        hed_fp.read(padding_length)
+    while chunk := hed_fp.read(8):
+        if chunk == HED_EOF:
+            break
 
-        file_path = pathlib.PureWindowsPath(file_path.decode("ascii"))
+        offset, size = struct.unpack("<II", chunk)
 
-        yield FileInfo(data_offset, data_size, file_path)
+        while (byte := hed_fp.read(1)) != b"\x00":
+            path_buf.extend(byte)
+
+        hed_fp.seek(
+            calc_padding(
+                len(chunk) + len(path_buf) + 1,  # +1 for null byte
+                HED_ALIGNMENT,
+            ),
+            SEEK_CUR,
+        )
+
+        entries.append(
+            HedEntry(offset, size, PureWindowsPath(path_buf.decode("ascii")))
+        )
+        path_buf.clear()
+
+    return tuple(entries)
 
 
-def unpack(hed_fp: BinaryIO, wad_fp: BinaryIO, dst_dir: pathlib.Path) -> None:
+def unpack(hed_fp: BinaryIO, wad_fp: BinaryIO, dst_dir: Path) -> None:
     """
     Unpacks the contents of a Neversoft PS2 WAD file into a specified directory.
 
-    This function reads entries from the HED (header) file and extracts
-    corresponding data from the WAD (Where's All the Data) file, writing each
-    file to the specified directory.
-
     Args:
-        hed_fp (BinaryIO): The HED (header) file pointer opened in r+b mode.
-        wad_fp (BinaryIO): The WAD file pointer opened in r+b mode.
-        dst_dir (pathlib.Path): The destination directory where the files will
-          be extracted.
+        hed_fp: The HED (header) file pointer opened in r+b mode.
+        wad_fp: The WAD file pointer opened in r+b mode.
+        dst_dir: The destination directory where the files will be extracted.
     """
-    for file_entry in parse_hed(hed_fp):
-        output_path = dst_dir / file_entry.path.relative_to("\\")
+    hed_entries = parse_hed(hed_fp)
+
+    is_sector_offsets = hed_entries[1].offset < hed_entries[0].size
+    if is_sector_offsets:
+        print("Note: This WAD file uses sector-based offsets.")
+
+    for hed_entry in hed_entries:
+        output_path = dst_dir / hed_entry.path.relative_to("\\")
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        wad_fp.seek(file_entry.data_offset)
+        wad_fp.seek(
+            hed_entry.offset * SECTOR_SIZE
+            if is_sector_offsets
+            else hed_entry.offset
+        )
 
-        with open(output_path, "wb") as out_file:
-            bytes_remaining = file_entry.data_size
+        with output_path.open("wb") as out_file:
+            remaining = hed_entry.size
 
-            while bytes_remaining > 0:
-                chunk_size = min(Constants.CHUNK_SIZE, bytes_remaining)
-                chunk = wad_fp.read(chunk_size)
+            while remaining > 0:
+                chunk = wad_fp.read(min(CHUNK_SIZE, remaining))
+
                 out_file.write(chunk)
-                bytes_remaining -= len(chunk)
+                remaining -= len(chunk)
+
+
+__all__ = ["unpack"]
